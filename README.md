@@ -68,7 +68,9 @@ eval "$(direnv hook zsh)"
 Then:
 
 ```sh
+cd ~/Documents/Projects/nix-config      # `.` below is this flake
 nix run .#home-manager -- switch -b hm-backup --flake .
+exec zsh               # a new shell, to pick up ~/.nix-profile/bin
 agents-install         # only fills in what's missing
 ```
 
