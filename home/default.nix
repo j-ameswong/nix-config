@@ -29,13 +29,10 @@
 
   # User services, T3 Code and the agents it starts among them, get their PATH from the systemd
   # user manager rather than a shell.
-  systemd.user.sessionVariables.PATH = lib.concatStringsSep ":" [
-    "${config.home.homeDirectory}/.local/bin"
-    "${config.home.homeDirectory}/.opencode/bin"
-    "${config.home.profileDirectory}/bin"
-    "/nix/var/nix/profiles/default/bin"
-    "\${PATH}"
-  ];
+  # Named to sort after Ubuntu's 99-environment.conf (/etc/environment), which sets PATH outright.
+  xdg.configFile."environment.d/999-path.conf".text = ''
+    PATH=${config.home.homeDirectory}/.local/bin:${config.home.homeDirectory}/.opencode/bin:${config.home.profileDirectory}/bin:/nix/var/nix/profiles/default/bin:''${PATH}
+  '';
 
   # systemd reads environment.d only when the user manager starts, so hand the result to the
   # running one too. Services pick it up when they next restart.
