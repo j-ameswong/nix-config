@@ -78,7 +78,22 @@ in
     ${lib.concatMapStrings (file: "EnvironmentFile=-%h/.config/secrets/${file}\n") apiKeyFiles}
   '';
 
-  # Read by the deepseek agents, which a Codex coordinator delegates to with `opencode run`.
+  # T3 Code ships with OpenCode switched off and keeps the switch in its own settings, which it
+  # rewrites and watches. Switch it on once; a later change in the app wins.
+  home.activation.t3EnableOpenCode = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    settings=${config.home.homeDirectory}/.t3/userdata/settings.json
+    if [[ -d ''${settings%/*} ]] && ! ${lib.getExe pkgs.jq} -e '.providerInstances.opencode' "$settings" >/dev/null 2>&1; then
+      updated=$(mktemp -p "''${settings%/*}")
+      if { cat "$settings" 2>/dev/null || echo '{}'; } |
+        ${lib.getExe pkgs.jq} '.providerInstances.opencode = {driver: "opencode", enabled: true}' > "$updated"; then
+        run mv "$updated" "$settings"
+      else
+        rm -f "$updated"
+      fi
+    fi
+  '';
+
+  # The deepseek agents, which a Codex coordinator delegates to with `opencode run --agent`.
   xdg.configFile."opencode/agents".source = ./opencode-agents;
 
   # Local models served by llama-swap on homelab-pro (the evo-x2 repo).
