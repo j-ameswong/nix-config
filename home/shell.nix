@@ -5,9 +5,11 @@
   ...
 }:
 lib.mkIf config.my.shell.enable {
+  # The laptop's kitty sends TERM=xterm-kitty over SSH, and without its terminfo zsh can't edit
+  # lines. ncurses always searches ~/.terminfo; shells never see the Nix profile's terminfo.
+  home.file.".terminfo".source = "${pkgs.kitty.terminfo}/share/terminfo";
+
   home.packages = with pkgs; [
-    # The laptop's kitty sends TERM=xterm-kitty over SSH; without its terminfo zsh can't edit lines.
-    kitty.terminfo
     btop
     curl
     eza
