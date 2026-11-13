@@ -6,6 +6,8 @@
 }:
 lib.mkIf config.my.shell.enable {
   home.packages = with pkgs; [
+    # The laptop's kitty sends TERM=xterm-kitty over SSH; without its terminfo zsh can't edit lines.
+    kitty.terminfo
     btop
     curl
     eza
