@@ -37,6 +37,16 @@
     "\${PATH}"
   ];
 
+  # systemd reads environment.d only when the user manager starts, so hand the result to the
+  # running one too. Services pick it up when they next restart.
+  home.activation.importUserEnvironment = lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
+    generator=/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator
+    if [[ -x $generator ]] && systemctl --user show-environment >/dev/null 2>&1; then
+      mapfile -t user_env < <("$generator")
+      run systemctl --user set-environment "''${user_env[@]}"
+    fi
+  '';
+
   targets.genericLinux.enable = true;
   programs.home-manager.enable = true;
   news.display = "silent";
