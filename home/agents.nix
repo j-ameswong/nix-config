@@ -12,6 +12,14 @@ let
     export CODEX_NON_INTERACTIVE=1
   '';
 
+  # Hosted model API keys, one KEY=value file each under ~/.config/secrets. They stay out of the
+  # Nix store and git; copy them in by hand. OpenCode picks DEEPSEEK_API_KEY and
+  # OPENROUTER_API_KEY up from the environment.
+  apiKeyFiles = [
+    "deepseek.env"
+    "openrouter.env"
+  ];
+
   agents-install = pkgs.writeShellApplication {
     name = "agents-install";
     runtimeInputs = [ pkgs.curl ];
@@ -22,6 +30,9 @@ let
       if missing codex; then curl -fsSL https://chatgpt.com/codex/install.sh | sh; echo "installed: codex"; fi
       if missing opencode; then curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path; echo "installed: opencode"; fi
       if missing t3; then curl -fsSL https://t3.codes/install.sh | sh; echo "installed: t3"; fi
+
+      # The installer only ships OpenCode 1; the agents in opencode/agents use OpenCode 2's syntax.
+      if [[ $(opencode --version) == 1.* ]]; then opencode upgrade --major; echo "installed: opencode 2"; fi
 
       if ! systemctl --user cat t3code.service >/dev/null 2>&1; then
         t3 service install
@@ -50,6 +61,26 @@ in
     agents-update
   ];
 
+  # For OpenCode and anything else run from a shell. The laptop's own dotfiles load them there.
+  programs.zsh.envExtra = lib.mkIf config.my.shell.enable ''
+    for key_file in ${
+      lib.concatMapStringsSep " " (file: "${config.xdg.configHome}/secrets/${file}") apiKeyFiles
+    }; do
+      [[ -r $key_file ]] && { set -a; source "$key_file"; set +a; }
+    done
+    unset key_file
+  '';
+
+  # T3 Code starts the agents, so its service needs the keys. `t3 service install` owns the unit
+  # itself; this drop-in only adds to it. A missing file is skipped.
+  xdg.configFile."systemd/user/t3code.service.d/api-keys.conf".text = ''
+    [Service]
+    ${lib.concatMapStrings (file: "EnvironmentFile=-%h/.config/secrets/${file}\n") apiKeyFiles}
+  '';
+
+  # Read by the deepseek agents, which a Codex coordinator delegates to with `opencode run`.
+  xdg.configFile."opencode/agents".source = ./opencode-agents;
+
   # Local models served by llama-swap on homelab-pro (the evo-x2 repo).
   xdg.configFile."opencode/opencode.json".text = builtins.toJSON {
     "$schema" = "https://opencode.ai/config.json";
@@ -57,7 +88,9 @@ in
       npm = "@ai-sdk/openai-compatible";
       name = "llama-swap (homelab-pro)";
       options = {
-        baseURL = "http://homelab-pro:8080/v1";
+        # llama-swap listens on the Tailscale address only, and on homelab-pro itself the bare
+        # host name resolves to 127.0.1.1 through /etc/hosts.
+        baseURL = "http://homelab-pro.tailf13813.ts.net:8080/v1";
         timeout = 900000;
       };
       models = {

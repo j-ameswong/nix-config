@@ -32,6 +32,14 @@ see the same toolchain as an interactive shell in that directory. Every `.envrc`
 `my.projectsDir` and `~/.t3` is trusted without `direnv allow`, because T3 Code starts agents in
 new worktrees.
 
+## API keys
+
+OpenCode's DeepSeek and OpenRouter models read `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY`.
+Each lives in its own file, `~/.config/secrets/deepseek.env` and `openrouter.env`, as a plain
+`KEY=value` line (systemd can't read `export`). Create them by hand with mode 600; they never
+enter git or the Nix store. A drop-in loads them into T3 Code's service
+(`t3 service restart` after changing one), and zsh loads them on `homelab-pro`.
+
 ## New project
 
 ```sh
@@ -64,8 +72,8 @@ nix run .#home-manager -- switch -b hm-backup --flake .
 agents-install         # only fills in what's missing
 ```
 
-`-b hm-backup` renames files Home Manager takes over (such as `~/.config/opencode/opencode.json`)
-instead of failing. Delete `~/.gitconfig` afterwards; `~/.config/git/config` replaces it.
+`-b hm-backup` renames files Home Manager takes over (such as `~/.config/opencode/opencode.json`
+and `agents/`) instead of failing. T3 Code needs the API keys in the `.env` form described above. Delete `~/.gitconfig` afterwards; `~/.config/git/config` replaces it.
 
 ## Updating
 
