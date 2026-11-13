@@ -24,8 +24,13 @@ in
   # fires. These load the project's environment into those shells instead. T3 Code's service
   # sets the variables below, so ordinary scripts are unaffected.
   xdg.configFile = {
+    # direnv evaluates .envrc in bash, which would read BASH_ENV and recurse without the guard.
     "agent-shell/env.bash".text = ''
-      eval "$(${direnv} export bash 2>/dev/null)"
+      if [[ -z ''${AGENT_SHELL_DIRENV_LOADING-} ]]; then
+        export AGENT_SHELL_DIRENV_LOADING=1
+        eval "$(${direnv} export bash 2>/dev/null)"
+        unset AGENT_SHELL_DIRENV_LOADING
+      fi
     '';
     "agent-shell/env.zsh".text = ''
       if [[ -n $AGENT_SHELL_DIRENV && ! -o interactive ]]; then
